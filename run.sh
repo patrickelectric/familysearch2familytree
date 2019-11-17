@@ -9,6 +9,9 @@ if [ "$1" == "" ] || [[ ! "$1" =~ ${USER_PID_REGEX} ]]; then
 fi
 
 ID=$1
+YEAR_LIMIT="${2:-1400}"
+
+echo "Search will be done until $YEAR_LIMIT."
 
 echo "Create family folder.."
 mkdir -p $FAMILY_FOLDER
@@ -20,7 +23,6 @@ get_user_from_api() {
 }
 
 get_json_from() {
-    ID=$1
     echo "Looking for: $1"
 
     if [ -f "$FAMILY_FOLDER/$1.json" ]; then
@@ -36,20 +38,41 @@ get_parents() {
     NAME=$(jql '"persons"[0]."display"."name"' $FAMILY_FOLDER/$1.json | tr --delete \")
     PARENT1=$(jql '"childAndParentsRelationships"[0]."parent1"."resourceId"' $FAMILY_FOLDER/$1.json | tr --delete \")
     PARENT2=$(jql '"childAndParentsRelationships"[0]."parent2"."resourceId"' $FAMILY_FOLDER/$1.json | tr --delete \")
-    echo "User: " $NAME
+    echo "User: $NAME ($1) "
     echo " Parent1: " $PARENT1
     echo " Parent2: " $PARENT2
 }
 
-LAST_IDS=()
+get_year() {
+    ret=$(jql '"persons"[0]."facts"[0]."date"."original"' family/$1.json | rg '\d+"' -o | tr --delete \")
+}
+
+LAST_IDS_SIZE=1
 IDS=($ID)
-while [[ ${#LAST_IDS[@]} != ${#IDS[@]} ]]; do
-    LAST_IDS=$IDS
-    for ID in ${IDS[*]}; do
-        get_json_from $ID
-        get_parents $ID
+while true; do
+    INDEX=0
+    AMOUNT=${#IDS[@]}
+    LAST_IDS_SIZE=$AMOUNT
+
+    for ID_I in ${IDS[*]}; do
+        INDEX=$(($INDEX+1))
+        echo "$INDEX / $AMOUNT"
+
+        get_json_from $ID_I
+        get_year $ID_I
+        echo "Year:" $ret
+        if [ "$ret" != "" ] && (( $ret < $YEAR_LIMIT )); then
+            echo "Skipping.."
+            continue
+        fi
+        get_parents $ID_I
         IDS+=("$PARENT1")
         IDS+=("$PARENT2")
     done
     IDS=( `for i in ${IDS[@]}; do echo $i; done | sort -u` )
+    if (( $LAST_IDS_SIZE == ${#IDS[@]} )); then
+        echo "$ID $YEAR_LIMIT" > $FAMILY_FOLDER/results.txt
+        echo "${IDS[@]}" >> $FAMILY_FOLDER/results.txt
+        break
+    fi
 done

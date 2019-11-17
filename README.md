@@ -20,5 +20,7 @@ E.g:
 1. Do the login in www.familysearch.org
 2. Download the cookies with [this extension](https://chrome.google.com/webstore/detail/cookiestxt/njabckikapfpffapmjgojcnbfjonfjfg?hl=pt-BR)
 3. Save it as cookies.txt in your home folder
-4. Run `run.sh ID` where ID is your personal ID: `ABCD-123`
+4. Run `run.sh ID YEAR` where ID is your personal ID [`ABCD-123`] and YEAR [default: `1400`] the limit year to search.
 5. Wait until it's done!
+
+A valid list of all IDS will be in family/results.txt
